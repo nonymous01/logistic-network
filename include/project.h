@@ -1,70 +1,51 @@
-#ifndef PROJECT_H
-#define PROJECT_H
+#ifndef PROJECT_H  // Si le symbole PROJECT_H n'est pas défini, inclure ce fichier. Cela évite que ce fichier soit inclus plusieurs fois.
+#define PROJECT_H  // Définit le symbole PROJECT_H pour signaler que ce fichier a été inclus.
 
-#include <stdbool.h>
+#include <stdbool.h>  // Inclut la bibliothèque pour utiliser les types booléens (true, false).
 
-// ----- Structures de données -----
-// Attributs d'une arête
-typedef struct {
-    double distance;
-    double baseTime;
-    double cost;
-    int roadType;
-    double reliability;
-    int restrictions;
-    // Variation temporelle (multiplicateur)
-    double timeFactor[3]; // 0=matin,1=après-midi,2=nuit
-} EdgeAttr;
-
-// Nœud d'adjacence
+// Définition de la structure AdjListNode, représentant un noeud d'une liste d'adjacence
+// Chaque noeud contient un sommet de destination, un poids (poids de l'arête) et un pointeur vers le noeud suivant.
 typedef struct AdjListNode {
-    int dest;
-    EdgeAttr attr;
-    struct AdjListNode* next;
+    int dest;               // Sommet de destination de l'arête.
+    float weight;           // Poids de l'arête (par exemple, la distance entre les sommets).
+    struct AdjListNode* next;  // Pointeur vers le prochain noeud de la liste d'adjacence.
 } AdjListNode;
 
-// Liste d'adjacence
-typedef struct {
-    AdjListNode* head;
+// Définition de la structure AdjList, représentant une liste d'adjacence pour un sommet.
+typedef struct AdjList {
+    AdjListNode* head;   // Pointeur vers le premier noeud de la liste d'adjacence pour ce sommet.
 } AdjList;
 
-// Graphe
-typedef struct {
-    int V;
-    AdjList* array;
+// Définition de la structure Graph, représentant un graphe.
+typedef struct Graph {
+    int V;              // Nombre de sommets dans le graphe.
+    AdjList* array;     // Tableau de listes d'adjacence, une pour chaque sommet.
 } Graph;
 
-// ----- Prototypes -----
-// Création et manipulation du graphe
+// Déclaration des fonctions du graphe, que l'on va définir dans le fichier source (.c).
+
+// Crée un graphe avec un nombre de sommets V.
 Graph* createGraph(int V);
-void addEdge(Graph* g, int src, int dest, EdgeAttr attr);
-void removeEdge(Graph* g, int src, int dest);
-void freeGraph(Graph* g);
-void printGraph(Graph* g);
 
-// Chargement / sauvegarde
-Graph* loadGraphJSON(const char* filename);
-void saveGraphJSON(Graph* g, const char* filename);
+// Ajoute une arête entre deux sommets (src, dest) avec un poids spécifié.
+void addEdge(Graph* graph, int src, int dest, float weight);
 
-// Parcours
-void DFS(Graph* g, int start, bool* visited);
-void BFS(Graph* g, int start, bool* visited);
+// Détecte s'il existe un cycle dans le graphe.
 bool detectCycle(Graph* g);
-int connectedComponents(Graph* g, int* comp);
-bool isAccessible(Graph* g, int src, int dest);
 
-// Optimisation
-void floydWarshall(Graph* g, double** dist);
-bool bellmanFord(Graph* g, int src, double* dist);
-int* tspNearestNeighbor(Graph* g, int start);
+// Affiche les arêtes et les poids de chaque sommet du graphe.
+void printGraph(Graph* graph);
 
-// Glouton
-void greedyAssignment(/* paramètres */);
+// Calcule les plus courts chemins entre tous les sommets à l'aide de l'algorithme de Floyd-Warshall.
+void floydWarshall(Graph* g, float** dist);
 
-// Génétique
-void geneticAlgorithm(/* paramètres */);
+// Affiche une solution pour le problème du voyageur de commerce (TSP).
+void tsp(Graph* g);
 
-// Utilitaires
-void exampleUsage();
+// Génère un fichier DOT qui peut être utilisé pour générer un graphique avec Graphviz.
+void generateDot(Graph* g, const char* filename);
 
-#endif // PROJECT_H
+// Libère la mémoire allouée pour le graphe et ses éléments.
+void freeGraph(Graph* g);
+
+#endif  // Fin de la directive #ifndef pour éviter les inclusions multiples.

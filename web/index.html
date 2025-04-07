@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Réseau Logistique - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Bibliothèques de visualisation -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/app.js" defer></script>
+    <script src="js/visualizations.js" defer></script>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen">
+        <!-- Barre de navigation -->
+        <nav class="bg-blue-600 text-white p-4">
+            <div class="container mx-auto flex justify-between items-center">
+                <h1 class="text-2xl font-bold">Réseau Logistique</h1>
+                <div class="space-x-4">
+                    <button id="refreshBtn" class="bg-blue-500 hover:bg-blue-700 px-4 py-2 rounded">
+                        <i class="fas fa-sync-alt"></i> Actualiser
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Contenu principal -->
+        <main class="container mx-auto p-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Carte des véhicules -->
+                <div class="bg-white rounded-lg shadow p-4">
+                    <h2 class="text-xl font-semibold mb-4">Véhicules en circulation</h2>
+                    <div id="vehiclesList" class="space-y-2">
+                        <!-- Les véhicules seront ajoutés ici dynamiquement -->
+                    </div>
+                </div>
+
+                <!-- Carte des colis -->
+                <div class="bg-white rounded-lg shadow p-4">
+                    <h2 class="text-xl font-semibold mb-4">Statut des colis</h2>
+                    <div id="packagesList" class="space-y-2">
+                        <!-- Les colis seront ajoutés ici dynamiquement -->
+                    </div>
+                </div>
+
+                <!-- Carte du réseau -->
+                <div class="bg-white rounded-lg shadow p-4">
+                    <h2 class="text-xl font-semibold mb-4">Réseau logistique</h2>
+                    <div id="networkGraph" class="h-64">
+                        <!-- Le graphe sera affiché ici -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistiques -->
+            <div class="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-white rounded-lg shadow p-4">
+                    <h3 class="text-lg font-semibold">Colis livrés</h3>
+                    <p id="deliveredPackages" class="text-3xl font-bold text-green-600">0</p>
+                </div>
+                <div class="bg-white rounded-lg shadow p-4">
+                    <h3 class="text-lg font-semibold">Véhicules actifs</h3>
+                    <p id="activeVehicles" class="text-3xl font-bold text-blue-600">0</p>
+                </div>
+                <div class="bg-white rounded-lg shadow p-4">
+                    <h3 class="text-lg font-semibold">Temps moyen de livraison</h3>
+                    <p id="avgDeliveryTime" class="text-3xl font-bold text-purple-600">0 min</p>
+                </div>
+                <div class="bg-white rounded-lg shadow p-4">
+                    <h3 class="text-lg font-semibold">Efficacité du réseau</h3>
+                    <p id="networkEfficiency" class="text-3xl font-bold text-orange-600">0%</p>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html> 

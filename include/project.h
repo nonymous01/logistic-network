@@ -1,70 +1,61 @@
 #ifndef PROJECT_H
 #define PROJECT_H
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
+#include <limits.h>
+#include <float.h>
+#include "types.h"
 
-// ----- Structures de données -----
-// Attributs d'une arête
-typedef struct {
-    double distance;
-    double baseTime;
-    double cost;
-    int roadType;
-    double reliability;
-    int restrictions;
-    // Variation temporelle (multiplicateur)
-    double timeFactor[3]; // 0=matin,1=après-midi,2=nuit
-} EdgeAttr;
-
-// Nœud d'adjacence
-typedef struct AdjListNode {
-    int dest;
-    EdgeAttr attr;
-    struct AdjListNode* next;
-} AdjListNode;
-
-// Liste d'adjacence
-typedef struct {
-    AdjListNode* head;
-} AdjList;
-
-// Graphe
-typedef struct {
-    int V;
-    AdjList* array;
-} Graph;
-
-// ----- Prototypes -----
-// Création et manipulation du graphe
+// Prototypes des fonctions de gestion du graphe
 Graph* createGraph(int V);
+AdjNode* newAdjNode(int dest, EdgeAttr attr);
 void addEdge(Graph* g, int src, int dest, EdgeAttr attr);
 void removeEdge(Graph* g, int src, int dest);
-void freeGraph(Graph* g);
 void printGraph(Graph* g);
+void freeGraph(Graph* g);
 
-// Chargement / sauvegarde
-Graph* loadGraphJSON(const char* filename);
-void saveGraphJSON(Graph* g, const char* filename);
-
-// Parcours
+// Prototypes des fonctions de parcours et analyse du graphe
+void DFS_util(Graph* g, int v, bool* visited);
 void DFS(Graph* g, int start, bool* visited);
-void BFS(Graph* g, int start, bool* visited);
+void BFS(Graph* g, int start);
+bool detectCycleUtil(Graph* g, int v, bool* visited, bool* recStack);
 bool detectCycle(Graph* g);
-int connectedComponents(Graph* g, int* comp);
-bool isAccessible(Graph* g, int src, int dest);
 
-// Optimisation
-void floydWarshall(Graph* g, double** dist);
-bool bellmanFord(Graph* g, int src, double* dist);
-int* tspNearestNeighbor(Graph* g, int start);
+// Prototypes des fonctions d'optimisation
+void greedyAssignment(Graph* g, Package* packages, int num_packages, Vehicle* vehicles, int num_vehicles);
+void dailyPlanning(Graph* g, Vehicle* vehicles, int num_vehicles, Package* packages, int num_packages);
+void multiDayPlanning(Graph* g, Vehicle* vehicles, int num_vehicles, Package* packages, int num_packages);
+void dynamicReallocation(Graph* g, Vehicle* vehicles, int num_vehicles, Package* packages, int num_packages, int failed_node);
+void geneticAlgorithm(Graph* g, Package* packages, int num_packages, Vehicle* vehicles, int num_vehicles);
 
-// Glouton
-void greedyAssignment(/* paramètres */);
+// Prototypes des fonctions de test
+Graph* createSampleNetwork(void);
+Vehicle* createSampleVehicles(int* num_vehicles);
+Package* createSamplePackages(int* num_packages);
 
-// Génétique
-void geneticAlgorithm(/* paramètres */);
+// Energy management functions
+float calculateEnergyConsumption(Graph* g, int src, int dest, Vehicle* vehicle);
+float calculateChargingTime(Vehicle* vehicle);
+void chargeVehicle(Vehicle* vehicle, float charging_time);
+void planChargingStops(Route* route, Vehicle* vehicle, Graph* g);
 
-// Utilitaires
-void exampleUsage();
+// Break management functions
+bool needsBreak(Vehicle* vehicle, float driving_time);
+void planBreaks(Route* route, Vehicle* vehicle, Graph* g);
+void updateDrivingTime(Vehicle* vehicle, float time);
 
-#endif // PROJECT_H
+// Loading management functions
+Loading createEmptyLoading();
+void addPackageToLoading(Loading* loading, int package_index, Package* package);
+void freeLoading(Loading* loading);
+void updateAssignmentsFromLoading(Loading* loading, Package* packages, int vehicle_id);
+
+// Route management functions
+int findNearestChargingStation(Graph* g, int current_node);
+int findNearestRestArea(Graph* g, int current_node);
+void insertNodeInRoute(Route* route, int position, int node);
+
+#endif // PROJECT_H 

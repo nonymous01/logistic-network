@@ -1,16 +1,37 @@
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wextra -O2
-INCLUDE = -Iinclude
-SRC = src/main.c
-OBJ = $(SRC:.c=.o)
-TARGET = logistic_network
+CFLAGS = -Wall -Wextra -O2 -I./include -I.
+LDFLAGS = -lm
 
-all: $(TARGET)
+SRC_DIR = src
+OBJ_DIR = obj
+BIN_DIR = bin
 
-$(TARGET): $(SRC)
-	$(CC) $(CFLAGS) $(INCLUDE) $^ -o $@
+SRCS = $(wildcard $(SRC_DIR)/*.c)
+OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
+TARGET = $(BIN_DIR)/logistic_network
+
+.PHONY: all clean directories
+
+all: directories $(TARGET)
+
+directories:
+	@mkdir -p $(OBJ_DIR) $(BIN_DIR)
+
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(TARGET): $(OBJS)
+	$(CC) $(OBJS) -o $(TARGET) $(LDFLAGS)
 
 clean:
-	rm -f $(TARGET) $(OBJ)
+	rm -rf $(OBJ_DIR) $(BIN_DIR)
 
-.PHONY: all clean
+run: all
+	./$(TARGET)
+
+debug: CFLAGS += -g
+debug: clean all
+
+# Règle pour compiler directement avec gcc
+compile:
+	$(CC) $(CFLAGS) $(SRC_DIR)/main.c -o $(BIN_DIR)/logistic_network $(LDFLAGS)

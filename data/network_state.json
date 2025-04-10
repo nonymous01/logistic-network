@@ -1,0 +1,53 @@
+{
+    "vehicles": [
+        {
+            "id": 1,
+            "type": "Petit",
+            "status": "en_route",
+            "current_location": "Entrepôt A",
+            "current_battery": 75.5,
+            "current_node": 1,
+            "route": [1, 3, 4],
+            "packages": [1, 2]
+        }
+    ],
+    "packages": [
+        {
+            "id": 1,
+            "status": "en_livraison",
+            "priority": 1,
+            "source": "Entrepôt A",
+            "destination": "Point A",
+            "weight": 5.5,
+            "assigned_vehicle": 1
+        }
+    ],
+    "network": {
+        "nodes": [
+            {
+                "id": 1,
+                "name": "Entrepôt A",
+                "type": "warehouse"
+            },
+            {
+                "id": 3,
+                "name": "Point A",
+                "type": "delivery"
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 3,
+                "distance": 20,
+                "time": 15
+            }
+        ]
+    },
+    "statistics": {
+        "delivered_packages": 1,
+        "active_vehicles": 1,
+        "average_delivery_time": 45.5,
+        "network_efficiency": 95.5
+    }
+}

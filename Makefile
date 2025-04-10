@@ -10,7 +10,7 @@ SRCS = $(wildcard $(SRC_DIR)/*.c)
 OBJS = $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
 TARGET = $(BIN_DIR)/logistic_network
 
-.PHONY: all clean directories
+.PHONY: all clean directories test_json
 
 all: directories $(TARGET)
 
@@ -35,3 +35,10 @@ debug: clean all
 # Règle pour compiler directement avec gcc
 compile:
 	$(CC) $(CFLAGS) $(SRC_DIR)/main.c -o $(BIN_DIR)/logistic_network $(LDFLAGS)
+
+# Règle pour compiler le test JSON
+test_json: $(OBJ_DIR)/test_json.o $(OBJ_DIR)/json_handler.o
+	$(CC) $(LDFLAGS) -o $(BIN_DIR)/test_json $^
+
+$(OBJ_DIR)/test_json.o: src/test_json.c
+	$(CC) $(CFLAGS) -c $< -o $@

@@ -58,4 +58,25 @@ int findNearestChargingStation(Graph* g, int current_node);
 int findNearestRestArea(Graph* g, int current_node);
 void insertNodeInRoute(Route* route, int position, int node);
 
+// API JSON conversion functions
+void vehicleToJSON(Vehicle* vehicle, char* buffer);
+void packageToJSON(Package* pkg, char* buffer);
+void nodeToJSON(NetworkNode* node, char* buffer);
+void edgeToJSON(NetworkEdge* edge, char* buffer);
+char* vehiclesToJSON(Vehicle* vehicles, int num_vehicles);
+char* packagesToJSON(Package* packages, int num_packages);
+char* networkToJSON(Graph* graph);
+
+// Test data functions
+Vehicle* generateTestVehicles(int* num_vehicles);
+Package* generateTestPackages(int* num_packages);
+Graph* generateTestNetwork();
+NetworkState* initializeTestData();
+void freeTestData(NetworkState* data);
+
+// JSON handling functions
+NetworkState* readNetworkState(const char* filename);
+void writeNetworkState(const char* filename, const NetworkState* state);
+void freeNetworkState(NetworkState* state);
+
 #endif // PROJECT_H 

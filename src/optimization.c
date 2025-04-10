@@ -4,6 +4,50 @@
 #include <string.h>
 #include <limits.h>
 #include <float.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <cmocka.h>
+
+/**
+ * @mainpage Réseau Logistique Intelligent
+ * @section intro Introduction
+ * Système d'optimisation de réseaux logistiques avec :
+ * - Algorithmes de graphes avancés
+ * - Optimisation multi-contraintes
+ * - Gestion temps-réel
+ * 
+ * @section modules Modules clés
+ * 1. @ref graph_handling - Gestion du graphe
+ * 2. @ref optimization_algs - Algorithmes d'optimisation
+ * 3. @ref genetic_alg - Algorithme génétique
+ */
+
+/**
+ * @defgroup graph_handling Gestion du graphe
+ * Création, manipulation et analyse du réseau logistique
+ */
+
+/**
+ * @brief Crée un graphe vide
+ * @param V Nombre de sommets
+ * @return Pointeur vers le graphe alloué
+ * @warning Le graphe doit être libéré avec freeGraph()
+ * @ingroup graph_handling
+ */
+Graph* createGraph(int V);
+
+/**
+ * @brief Ajoute une arête pondérée
+ * @param g Graphe cible
+ * @param src Source
+ * @param dest Destination
+ * @param attr Attributs de l'arête
+ * @return 0 si succès, -1 si erreur
+ * @throws EINVAL Si le graphe ou les sommets sont invalides
+ * @ingroup graph_handling
+ */
+int addEdge(Graph* g, int src, int dest, EdgeAttr attr);
 
 // ====================
 // Algorithmes d'optimisation
@@ -89,42 +133,35 @@ int* bellmanFord(Graph* g, int src) {
 
 int* tspNearestNeighbor(Graph* g, int start) {
     int V = g->V;
-    int* tour = malloc(V * sizeof(int));
+    int* tour = malloc((V + 1) * sizeof(int));
     bool* visited = calloc(V, sizeof(bool));
-    
+    int tour_index = 1;
+    int current = start;
+
     tour[0] = start;
     visited[start] = true;
-    
-    for (int i = 1; i < V; i++) {
-        int last = tour[i-1];
+
+    while (tour_index < V) {
+        AdjListNode* node = g->array[current].head;
         int next = -1;
-        float best = INF;
-        
-        AdjListNode* node = g->array[last].head;
+        float min_dist = INF;
+
         while (node) {
-            if (!visited[node->dest] && node->attr.distance < best) {
             if (!visited[node->dest] && node->attr.distance < min_dist) {
                 min_dist = node->attr.distance;
                 next = node->dest;
             }
             node = node->next;
         }
-        
-        if (next == -1) {
-            // Aucun voisin non visité trouvé
-            free(tour);
-            free(visited);
-            return NULL;
-        }
-        
+
+        if (next == -1) break;
+
         tour[tour_index++] = next;
-        visited[next] = 1;
+        visited[next] = true;
         current = next;
     }
-    
-    // Retour au point de départ
+
     tour[tour_index] = start;
-    
     free(visited);
     return tour;
 }
@@ -149,7 +186,7 @@ void multiDayPlanning(Graph* g, Package* packages, int num_packages,
     float* vehicle_capacity = (float*)calloc(num_vehicles, sizeof(float));
     
     for (int i = 0; i < num_vehicles; i++) {
-        vehicle_capacity[i] = vehicles[i].capacity;
+        vehicle_capacity[i] = vehicles[i].max_capacity;
     }
     
     for (int i = 0; i < num_packages; i++) {
@@ -199,7 +236,7 @@ void greedyAssignment(Graph* g, Package* packages, int num_packages,
     // Allocation gloutonne
     float* remaining_capacity = (float*)malloc(num_vehicles * sizeof(float));
     for (int i = 0; i < num_vehicles; i++) {
-        remaining_capacity[i] = vehicles[i].capacity;
+        remaining_capacity[i] = vehicles[i].max_capacity;
     }
     
     for (int i = 0; i < num_packages; i++) {
@@ -228,50 +265,63 @@ void greedyAssignment(Graph* g, Package* packages, int num_packages,
 
 void dailyPlanning(Graph* g, Package* packages, int num_packages,
                   Vehicle* vehicles, int num_vehicles) {
-    // Planification journalière basée sur les fenêtres de livraison
-    int current_time = 0; // Temps en minutes depuis minuit
-    
-    while (current_time < 1440) { // 24 heures
-        // Trouver le colis avec la fenêtre de livraison la plus proche
+    initMetrics();
+    int current_time = 0;
+
+    while (current_time < 1440) {
         int next_package = -1;
         int earliest_window = INT_MAX;
-        
+
+        // Sélection du colis
         for (int i = 0; i < num_packages; i++) {
-            if (packages[i].delivery_window_start >= current_time &&
-                packages[i].delivery_window_start < earliest_window) {
+            if (!packages[i].delivered && 
+                current_time + min_time <= packages[i].delivery_window_end) {
                 earliest_window = packages[i].delivery_window_start;
                 next_package = i;
             }
         }
-        
+
         if (next_package == -1) break;
-        
-        // Trouver le véhicule disponible le plus proche
+
+        // Sélection du véhicule
         int best_vehicle = -1;
         float min_time = INF;
         
         for (int i = 0; i < num_vehicles; i++) {
-            if (vehicles[i].available_time <= current_time) {
-                float travel_time = calculateRouteCost(g, 
-                    &vehicles[i].current_location, 1);
-                
-                if (travel_time < min_time) {
-                    min_time = travel_time;
-                    best_vehicle = i;
-                }
+            float travel_time = calculateRouteCost(g, 
+                &vehicles[i].current_location, packages[next_package].destination);
+            
+            if (travel_time < min_time && 
+                vehicles[i].current_load + packages[next_package].volume <= vehicles[i].max_capacity) {
+                min_time = travel_time;
+                best_vehicle = i;
             }
         }
-        
+
         if (best_vehicle != -1) {
-            // Mise à jour des temps
-            current_time = MAX(current_time + (int)min_time,
-                             packages[next_package].delivery_window_start);
-            vehicles[best_vehicle].available_time = current_time;
+            // Mise à jour des états
+            if (vehicles[best_vehicle].current_load + packages[next_package].volume <= vehicles[best_vehicle].max_capacity) {
+                packages[next_package].delivered = true;
+                vehicles[best_vehicle].current_load += packages[next_package].volume;
+                // Ajouter un log de confirmation
+                printf("Véhicule %d a livré le colis %d (Charge: %.2f/%.2f kg)\n", 
+                      best_vehicle, next_package,
+                      vehicles[best_vehicle].current_load,
+                      vehicles[best_vehicle].max_capacity);
+            }
             vehicles[best_vehicle].current_location = packages[next_package].destination;
+            current_time += (int)min_time;
+
+            // Journalisation
+            logMetric(&g_perf_stats.capacity_ts, 
+                     vehicles[best_vehicle].current_load / vehicles[best_vehicle].max_capacity * 100,
+                     CAPACITY_METRIC);
+            g_perf_stats.successful_assignments++;
         }
         
         current_time++;
     }
+    visualizeMetrics();
 }
 
 void dynamicReallocation(Graph* g, Package* packages, int num_packages,
@@ -281,8 +331,9 @@ void dynamicReallocation(Graph* g, Package* packages, int num_packages,
     int num_affected = 0;
     
     for (int i = 0; i < num_packages; i++) {
-        if (packages[i].origin == failed_edge || 
-            packages[i].destination == failed_edge) {
+        // Vérifier les routes passant par le nœud défaillant
+        if (packages[i].route != NULL && 
+            containsEdge(packages[i].route, failed_edge)) {
             affected_packages[num_affected++] = i;
         }
     }
@@ -314,4 +365,309 @@ void dynamicReallocation(Graph* g, Package* packages, int num_packages,
     }
     
     free(affected_packages);
-} 
+}
+
+// ====================
+// Structures modifiées
+// ====================
+typedef struct Package {
+    int id;
+    float volume;
+    int priority;
+    int origin;
+    int destination;
+    int delivery_window_start;
+    int delivery_window_end;
+    bool delivered;  // Nouveau champ
+} Package;
+
+typedef struct {
+    float avg_fitness;
+    int successful_assignments;
+    float avg_reassignment_time;
+    TimeSeries capacity_ts;
+    TimeSeries delivery_ts;
+} PerformanceStats;
+
+// ====================
+// Variables globales
+// ====================
+_Thread_local ErrorCode last_error;
+_Thread_local char error_message[256];
+PerformanceStats g_perf_stats;
+
+// ====================
+// Fonctions modifiées
+// ====================
+int* tspNearestNeighbor(Graph* g, int start) {
+    int V = g->V;
+    int* tour = malloc((V + 1) * sizeof(int));
+    bool* visited = calloc(V, sizeof(bool));
+    int tour_index = 1;
+    int current = start;
+
+    tour[0] = start;
+    visited[start] = true;
+
+    while (tour_index < V) {
+        AdjListNode* node = g->array[current].head;
+        int next = -1;
+        float min_dist = INF;
+
+        while (node) {
+            if (!visited[node->dest] && node->attr.distance < min_dist) {
+                min_dist = node->attr.distance;
+                next = node->dest;
+            }
+            node = node->next;
+        }
+
+        if (next == -1) break;
+
+        tour[tour_index++] = next;
+        visited[next] = true;
+        current = next;
+    }
+
+    tour[tour_index] = start;
+    free(visited);
+    return tour;
+}
+
+void dailyPlanning(Graph* g, Package* packages, int num_packages,
+                  Vehicle* vehicles, int num_vehicles) {
+    initMetrics();
+    int current_time = 0;
+
+    while (current_time < 1440) {
+        int next_package = -1;
+        int earliest_window = INT_MAX;
+
+        // Sélection du colis
+        for (int i = 0; i < num_packages; i++) {
+            if (!packages[i].delivered && 
+                current_time + min_time <= packages[i].delivery_window_end) {
+                earliest_window = packages[i].delivery_window_start;
+                next_package = i;
+            }
+        }
+
+        if (next_package == -1) break;
+
+        // Sélection du véhicule
+        int best_vehicle = -1;
+        float min_time = INF;
+        
+        for (int i = 0; i < num_vehicles; i++) {
+            float travel_time = calculateRouteCost(g, 
+                &vehicles[i].current_location, packages[next_package].destination);
+            
+            if (travel_time < min_time && 
+                vehicles[i].current_load + packages[next_package].volume <= vehicles[i].max_capacity) {
+                min_time = travel_time;
+                best_vehicle = i;
+            }
+        }
+
+        if (best_vehicle != -1) {
+            // Mise à jour des états
+            if (vehicles[best_vehicle].current_load + packages[next_package].volume <= vehicles[best_vehicle].max_capacity) {
+                packages[next_package].delivered = true;
+                vehicles[best_vehicle].current_load += packages[next_package].volume;
+                // Ajouter un log de confirmation
+                printf("Véhicule %d a livré le colis %d (Charge: %.2f/%.2f kg)\n", 
+                      best_vehicle, next_package,
+                      vehicles[best_vehicle].current_load,
+                      vehicles[best_vehicle].max_capacity);
+            }
+            vehicles[best_vehicle].current_location = packages[next_package].destination;
+            current_time += (int)min_time;
+
+            // Journalisation
+            logMetric(&g_perf_stats.capacity_ts, 
+                     vehicles[best_vehicle].current_load / vehicles[best_vehicle].max_capacity * 100,
+                     CAPACITY_METRIC);
+            g_perf_stats.successful_assignments++;
+        }
+        
+        current_time++;
+    }
+    visualizeMetrics();
+}
+
+// ====================
+// Système de métriques
+// ====================
+void initMetrics() {
+    g_perf_stats = (PerformanceStats){
+        .capacity_ts = {.capacity = 1000, .count = 0},
+        .delivery_ts = {.capacity = 1000, .count = 0}
+    };
+    g_perf_stats.capacity_ts.points = malloc(1000 * sizeof(DataPoint));
+    g_perf_stats.delivery_ts.points = malloc(1000 * sizeof(DataPoint));
+}
+
+void logMetric(TimeSeries* ts, float value, int type) {
+    if (ts->count >= ts->capacity) {
+        ts->capacity *= 2;
+        ts->points = realloc(ts->points, ts->capacity * sizeof(DataPoint));
+    }
+    
+    ts->points[ts->count++] = (DataPoint){
+        .timestamp = time(NULL),
+        .metric_value = value,
+        .metric_type = type
+    };
+}
+
+// ====================
+// Visualisation
+// ====================
+void visualizeMetrics() {
+    FILE* fp = fopen("dashboard.html", "w");
+    fprintf(fp, "<!DOCTYPE html><html><head>\n");
+    fprintf(fp, "<script src='https://cdn.plot.ly/plotly-latest.min.js'></script>\n");
+    fprintf(fp, "<style>.plot-container {margin: 20px; padding: 20px; border: 1px solid #ddd;}</style>\n");
+    fprintf(fp, "</head><body>\n");
+
+    // Graphique de capacité
+    fprintf(fp, "<div id='capacity' class='plot-container'></div>\n");
+    
+    // Graphique de livraisons
+    fprintf(fp, "<div id='deliveries' class='plot-container'></div>\n");
+
+    // Script de données
+    fprintf(fp, "<script>\n");
+    fprintf(fp, "const capacityData = {\n");
+    fprintf(fp, "  x: [%s],\n", getTimestamps(&g_perf_stats.capacity_ts));
+    fprintf(fp, "  y: [%s],\n", getValues(&g_perf_stats.capacity_ts));
+    fprintf(fp, "  type: 'scatter', name: 'Capacité'\n};\n");
+    
+    fprintf(fp, "const deliveryData = {\n");
+    fprintf(fp, "  x: [%s],\n", getTimestamps(&g_perf_stats.delivery_ts));
+    fprintf(fp, "  y: [%s],\n", getValues(&g_perf_stats.delivery_ts));
+    fprintf(fp, "  type: 'bar', name: 'Livraisons'\n};\n");
+
+    fprintf(fp, "Plotly.newPlot('capacity', [capacityData], {title: 'Utilisation de la capacité'});\n");
+    fprintf(fp, "Plotly.newPlot('deliveries', [deliveryData], {title: 'Livraisons par heure'});\n");
+    fprintf(fp, "</script>\n</body></html>");
+    fclose(fp);
+}
+
+// ====================
+// Tests unitaires
+// ====================
+static void test_full_delivery_cycle(void** state) {
+    Graph* g = generateSmallNetwork();
+    Package pkg = {.id=1, .volume=5, .delivered=false};
+    Vehicle vehicle = {.id=0, .max_capacity=10, .current_load=0};
+    
+    dailyPlanning(g, &pkg, 1, &vehicle, 1);
+    
+    assert_true(pkg.delivered);
+    assert_true(vehicle.current_load == 5);
+    
+    freeGraph(g);
+}
+
+static void test_metrics_system(void** state) {
+    initMetrics();
+    logMetric(&g_perf_stats.capacity_ts, 75.0, CAPACITY_METRIC);
+    
+    assert_non_null(g_perf_stats.capacity_ts.points);
+    assert_int_equal(g_perf_stats.capacity_ts.count, 1);
+    assert_true(g_perf_stats.capacity_ts.points[0].metric_value == 75.0);
+    
+    free(g_perf_stats.capacity_ts.points);
+}
+
+// Ajouter cette constante
+#define LANG_FR 0
+#define LANG_EN 1
+
+void log_message(int lang, const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+    
+    if(lang == LANG_FR) {
+        char* translations[] = {
+            "[Livraison] Véhicule %d a livré colis %d\n",
+            "[Erreur] Capacité dépassée véhicule %d\n"
+        };
+        vprintf(translations[msg_id], args);
+    }
+    // ... gestion d'autres langues
+    va_end(args);
+}
+
+typedef struct {
+    float cost;
+    float time;
+    float reliability;
+} ParetoSolution;
+
+ParetoSolution* findParetoFront(Graph* g, int origin, int dest, int* front_size) {
+    int capacity = 10;
+    ParetoSolution* front = malloc(capacity * sizeof(ParetoSolution));
+    *front_size = 0;
+    
+    // Génération de solutions candidates
+    float** dist = malloc(g->V * sizeof(float*));
+    for(int i=0; i<g->V; i++) dist[i] = malloc(g->V * sizeof(float));
+    floydWarshall(g, dist);
+    
+    // Exploration des routes
+    for(int k=0; k<g->V; k++) {
+        if(dist[origin][k] + dist[k][dest] < INF) {
+            ParetoSolution sol = {
+                .cost = dist[origin][k] + dist[k][dest],
+                .time = (dist[origin][k] + dist[k][dest]) * 0.8,
+                .reliability = 0.95
+            };
+            
+            // Vérification dominance Pareto
+            bool dominated = false;
+            for(int i=0; i<*front_size; i++) {
+                if(front[i].cost <= sol.cost && 
+                   front[i].time <= sol.time && 
+                   front[i].reliability >= sol.reliability) {
+                    dominated = true;
+                    break;
+                }
+            }
+            
+            if(!dominated) {
+                if(*front_size >= capacity) {
+                    capacity *= 2;
+                    front = realloc(front, capacity * sizeof(ParetoSolution));
+                }
+                front[(*front_size)++] = sol;
+            }
+        }
+    }
+    
+    // Nettoyage mémoire
+    for(int i=0; i<g->V; i++) free(dist[i]);
+    free(dist);
+    
+    return front;
+}
+
+int main() {
+    // Initialisation
+    Graph* g = createGraph(100);
+    initWebsocket(9000);
+    
+    // Planification
+    ParetoSolution* pareto = findParetoFront(g, 0, 99, &front_size);
+    Chromosome* solution = geneticAlgorithm(g, 0, 99, 100, 50);
+    
+    // Monitoring temps-réel
+    while(1) {
+        updateMetrics(g);
+        broadcastMetrics();
+        sleep(1);
+    }
+    
+    return 0;
+}

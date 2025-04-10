@@ -86,49 +86,75 @@ typedef struct {
     AdjList* array;
 } Graph;
 
-// Structure for a vehicle
+// Structure pour les véhicules
 typedef struct {
     int id;
-    VehicleType type;
-    float capacity;           // Maximum weight capacity
-    float volume_capacity;    // Maximum volume capacity
-    float speed;             // Average speed in km/h
-    float cost_per_km;       // Cost per kilometer
-    float battery_capacity;  // Battery capacity in kWh
-    float current_battery;   // Current battery level
-    float consumption_rate;  // Energy consumption rate in kWh/km
-    float charging_rate;     // Charging rate in kW
-    int current_location;    // Current node location
-    float driving_time;      // Current driving time in hours
-    float last_break_time;   // Time of last break in hours
-    float max_driving_time;  // Maximum allowed driving time in hours
+    char type[50];
+    char status[50];
+    char current_location[100];
+    double current_battery;
+    int current_node;
+    int* route;
+    int route_length;
+    int* packages;
+    int package_count;
 } Vehicle;
 
-// Structure for a loading
-typedef struct {
-    int* package_indices;  // Indices of packages in the loading
-    int num_packages;      // Number of packages
-    float total_weight;    // Total weight
-    float total_volume;    // Total volume
-    float total_value;     // Total value (priority)
-} Loading;
-
-// Colis
+// Structure pour les colis
 typedef struct {
     int id;
-    int source;
-    int destination;
-    float weight;
-    float volume;
-    float priority;
-    bool is_assigned;
-    bool is_delivered;
+    char status[50];
+    int priority;
+    char source[100];
+    char destination[100];
+    double weight;
+    int source_node;
+    int destination_node;
     int assigned_vehicle;
-    float delivery_window_start;
-    float delivery_window_end;
 } Package;
 
-// Route
+// Structure pour les nœuds du réseau
+typedef struct {
+    int id;
+    char name[100];
+    char type[50];
+    double capacity;
+    double current_load;
+    double demand;
+    double current_demand;
+} NetworkNode;
+
+// Structure pour les arêtes du réseau
+typedef struct {
+    int source;
+    int target;
+    double distance;
+    double time;
+    double cost;
+} NetworkEdge;
+
+// Structure pour les statistiques
+typedef struct {
+    int delivered_packages;
+    int active_vehicles;
+    double average_delivery_time;
+    double network_efficiency;
+} NetworkStats;
+
+// Structure principale pour l'état du réseau
+typedef struct {
+    Vehicle* vehicles;
+    int vehicle_count;
+    Package* packages;
+    int package_count;
+    NetworkNode* nodes;
+    int node_count;
+    NetworkEdge* edges;
+    int edge_count;
+    NetworkStats stats;
+} NetworkState;
+
+// Structure pour les routes
 typedef struct {
     int* nodes;
     int num_nodes;
@@ -136,18 +162,13 @@ typedef struct {
     float total_cost;
 } Route;
 
-// Solution pour l'algorithme génétique
+// Structure pour les chargements
 typedef struct {
-    int* assignments;
-    int num_packages;
-    int num_vehicles;
-    float fitness;
-} Solution;
-
-// Population pour l'algorithme génétique
-typedef struct {
-    Solution* individuals;
-    int size;
-} Population;
+    int* package_indices;  // Indices des colis dans le chargement
+    int num_packages;      // Nombre de colis
+    float total_weight;    // Poids total
+    float total_volume;    // Volume total
+    float total_value;     // Valeur totale (priorité)
+} Loading;
 
 #endif /* TYPES_H */ 
